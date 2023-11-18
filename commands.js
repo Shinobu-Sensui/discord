@@ -3,10 +3,10 @@ import os from "./features/computerInfo.js";
 import ColorMessage from "./features/colorMessage.js";
 
 const dictionnaires = await new lists().fetch;
-let occ;
+let occ, syllables;
 try {
   occ = await fetch("https://khayyer.io/data/dicoOcc.json");
-  const syllables = await occ.json();
+  syllables = await occ.json();
 } catch (error) {
   throw error;
 }

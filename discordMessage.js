@@ -4,6 +4,7 @@ import cmd from "./commands.js";
 import ColorMessage from "./features/colorMessage.js";
 import { Hercai } from "hercai";
 
+let currentchannel
 const herc = new Hercai();
 const help = `  Commandes Disponibles :
   
@@ -49,43 +50,50 @@ let timebot = Date.now();
 
 defSocket.on("connect", () => console.log("(Re)connecté au serveur de defs"));
 
-defSocket.on("def", (w, t, d) => {
-  const channel = bot.channels.cache.get("1171837502668165290");
+const channelIDs = [
+  "1174680235501961299",
+  "1174680280016101416",
+  "1174680319429967914",
+  "1174680367538647100",
+  "1174680418004504626",
+  "1171837502668165290",
+  "928841166751957012",
+];
+
+defSocket.on("def", (w, t, d, channelID) => {
+  const channel = bot.channels.cache.get(currentchannel);
 
   try {
-    if (t === "Error 404") {
-      channel.send(
-        colormessage.msg_yellow(
-          `Définition introuvable pour ${w}${
-            d ? `, vouliez-vous dire "${d}" ?` : ""
-          }`
-        )
-      );
-    } else if (t === "Error 401") {
-      channel.send(colormessage.msg_red("Mauvaise requête"));
-    } else {
-      const definitionsString = d
-        .map((def) => JSON.stringify(def).replace(/"/g, ""))
-        .join("\n");
+    // Vérifier si l'ID du canal actuel est dans la liste des IDs autorisés
+    if (channel && channelIDs.includes(currentchannel)) {
+      if (t === "Error 404") {
+        channel.send(
+          colormessage.msg_yellow(
+            `Définition introuvable pour ${w}${d ? `, vouliez-vous dire "${d}" ?` : ""}`
+          )
+        );
+      } else if (t === "Error 401") {
+        channel.send(colormessage.msg_red("Mauvaise requête"));
+      } else {
+        const definitionsString = d
+          .map(def => JSON.stringify(def).replace(/"/g, ""))
+          .join("\n");
 
-      channel.send(
-        colormessage.msg_green(
-          `Définition ${t} - ${w.toUpperCase()}\n\n${definitionsString}`
-        )
-      );
+        channel.send(
+          colormessage.msg_green(`Définition ${t} - ${w.toUpperCase()}\n\n${definitionsString}`)
+        );
+      }
     }
   } catch (error) {
-    console.error(
-      "Une erreur s'est produite lors du traitement des définitions :",
-      error
-    );
+    console.error("Une erreur s'est produite lors du traitement des définitions :", error);
     // Gérer l'erreur de manière appropriée, par exemple, en envoyant un message de log ou en continuant l'exécution du code
   }
 });
 
+
 bot.on("messageCreate", async (channel) => {
   const messages = channel.content.toLowerCase().split(" ");
-  const channelID = channel.channelId;
+  const channelID = currentchannel = channel.channelId;
   const cmds = new cmd();
   const commands = await cmds.commands(messages);
   const firstMessage = messages[0].slice(1);
@@ -103,7 +111,6 @@ bot.on("messageCreate", async (channel) => {
 
   const sendMessageSegments = (message) => {
     const segments = cmds.decouperMessage(message);
-    console.log(segments);
     segments.forEach((segment) => {
       const result = colormessage.msg_yellow(segment);
       channel.channel.send(result);

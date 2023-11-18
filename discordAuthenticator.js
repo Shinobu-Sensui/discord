@@ -7,7 +7,7 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
   ],
 });
-const token = "MTE3Mjg5MTI3NjI3OTAzMzg4Ng.GmhJxX.WK7VBT3nt2XQh3D6_T7wV0Wc5oh1O6Ff6Ooxqw"
+const token = "MTE3Mjg5MTI3NjI3OTAzMzg4Ng.GLW4_b.hazE5i6IWvT7-LXV-VwyZtdY1MvV2JpUk7BZqs"
 // MTE3NTE4ODIzNDIwNTE0NzI2Ng.GkXYfY.uITc-mTyXkKu4DyIuQ-WpXaEaTelYSJeTFEScA
 
 
