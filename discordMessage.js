@@ -2,30 +2,17 @@ import io from "socket.io-client";
 import bot from "./discordAuthenticator.js";
 import cmd from "./commands.js";
 import ColorMessage from "./features/colorMessage.js";
-import { Hercai } from "hercai";
+import { gptweb } from "gpti";
+import { config } from "dotenv"
+config()
 
-let currentchannel
-const herc = new Hercai();
+let currentchannel;
+
 const help = `  Commandes Disponibles :
   
   .c [mot] : Recherche dans le dictionnaire.
   Exemple : .c mot
-  
-  .a : Recherche des adverbes.
-  Exemple : .a
-  
-  .g : Recherche des gentilés.
-  Exemple : .g
-  
-  .f : Recherche des fleurs.
-  Exemple : .f
-  
-  max + [taille] : Affiche tous les mots en fonction d'une page.
-  Exemple : max 10
-  
-  sub[nombre] + [syllabe] : Recherche de mots hardcore par syllabe.
-  Exemple : sub5 + er
-  
+
   info + [mot] : Affiche les informations sur un mot spécifique.
   Exemple : info mot
   
@@ -42,9 +29,10 @@ const help = `  Commandes Disponibles :
   Exemple : sai comment vas-tu ?`;
 
 const colormessage = new ColorMessage();
+const defKey = process.env.DEF_KEY
 const defSocket = io.connect("https://defs.opnm.net:443", {
   reconnection: true,
-  auth: { token: "QxVBlbf6P0JgWh9QflzCQcLcooX8yDj2054OaIfEztPo0fRXXs" },
+  auth: { token: defKey },
 });
 let timebot = Date.now();
 
@@ -69,34 +57,41 @@ defSocket.on("def", (w, t, d, channelID) => {
       if (t === "Error 404") {
         channel.send(
           colormessage.msg_yellow(
-            `Définition introuvable pour ${w}${d ? `, vouliez-vous dire "${d}" ?` : ""}`
+            `Définition introuvable pour ${w}${
+              d ? `, vouliez-vous dire "${d}" ?` : ""
+            }`
           )
         );
       } else if (t === "Error 401") {
         channel.send(colormessage.msg_red("Mauvaise requête"));
       } else {
         const definitionsString = d
-          .map(def => JSON.stringify(def).replace(/"/g, ""))
+          .map((def) => JSON.stringify(def).replace(/"/g, ""))
           .join("\n");
 
         channel.send(
-          colormessage.msg_green(`Définition ${t} - ${w.toUpperCase()}\n\n${definitionsString}`)
+          colormessage.msg_green(
+            `Définition ${t} - ${w.toUpperCase()}\n\n${definitionsString}`
+          )
         );
       }
     }
   } catch (error) {
-    console.error("Une erreur s'est produite lors du traitement des définitions :", error);
+    console.error(
+      "Une erreur s'est produite lors du traitement des définitions :",
+      error
+    );
     // Gérer l'erreur de manière appropriée, par exemple, en envoyant un message de log ou en continuant l'exécution du code
   }
 });
 
-
 bot.on("messageCreate", async (channel) => {
   const messages = channel.content.toLowerCase().split(" ");
-  const channelID = currentchannel = channel.channelId;
+  const channelID = (currentchannel = channel.channelId);
   const cmds = new cmd();
   const commands = await cmds.commands(messages);
   const firstMessage = messages[0].slice(1);
+  const cmdOut = messages.slice(1).join(" ");
   const symbols = [".", "/"];
   const isSpecificChannelAndStartsWithSymbol =
     [
@@ -109,36 +104,35 @@ bot.on("messageCreate", async (channel) => {
       "928841166751957012",
     ].includes(channelID) && symbols.includes(messages[0][0]);
 
-  const sendMessageSegments = (message) => {
+  const sendMessageSegments = async (message) => {
     const segments = cmds.decouperMessage(message);
-    segments.forEach((segment) => {
-      const result = colormessage.msg_yellow(segment);
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+      const result = colormessage.msg_green(segment);
       channel.channel.send(result);
-    });
+    }
   };
 
   if (messages[0].startsWith("sai") && messages[1]) {
-    try {
-      /* Question Example For TypeScript */
-      channel.channel.sendTyping();
-      herc
-        .question({ model: "v3-beta", content: messages.slice(1) })
-        .then((response) => {
-          console.log(response);
-          sendMessageSegments(response.reply);
-        })
-        .catch((error) => {
-          console.error("Erreur lors de la requête à hercai :", error);
-          // Gérez l'erreur de manière appropriée, par exemple, en envoyant un message de log ou en continuant l'exécution du code
-        });
-    } catch (error) {
-      console.error(
-        "Une erreur s'est produite lors de l'utilisation de hercai :",
-        error
-      );
-      // Gérez l'erreur de manière appropriée, par exemple, en envoyant un message de log ou en continuant l'exécution du code
-    }
+    gptweb(
+      {
+        prompt: cmdOut,
+        markdown: false,
+      },
+      (err, data) => {
+        if (err != null) {
+          console.log(err);
+        } else {
+          // Arrêter le "typing" et envoyer la réponse réelle après un délai
+          channel.channel.sendTyping();
+          setTimeout(async () => {
+            await sendMessageSegments(data.gpt);
+          }, 1000); // ajustez le délai selon vos besoins
+        }
+      }
+    );
   }
+
   if (isSpecificChannelAndStartsWithSymbol) {
     if (firstMessage === "time") {
       channel.reply(colormessage.msg_green(cmds.time(timebot)));
@@ -148,28 +142,6 @@ bot.on("messageCreate", async (channel) => {
     if (commands) channel.reply(colormessage.msg_blue(commands));
     if (firstMessage === "help" || firstMessage === "aide")
       channel.reply(colormessage.msg_yellow(help));
-    if (firstMessage === "photo") {
-      try {
-        herc
-          .drawImage({ model: "v3", prompt: messages.slice(1) })
-          .then((response) => {
-            channel.reply(response.url);
-          })
-          .catch((error) => {
-            console.error(
-              "Erreur lors de la requête à hercai pour dessiner une image :",
-              error
-            );
-            // Gérez l'erreur de manière appropriée, par exemple, en envoyant un message de log ou en continuant l'exécution du code
-          });
-      } catch (error) {
-        console.error(
-          "Une erreur s'est produite lors de l'utilisation de hercai pour dessiner une image :",
-          error
-        );
-        // Gérez l'erreur de manière appropriée, par exemple, en envoyant un message de log ou en continuant l'exécution du code
-      }
-    }
 
     cmds.def(defSocket, messages);
   }

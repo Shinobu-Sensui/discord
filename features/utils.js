@@ -19,7 +19,7 @@ export default class Utils {
     const minutes = Math.floor(elapsedTime / (1000 * 60)) % 60;
     const hours = Math.floor(elapsedTime / (1000 * 60 * 60)) % 24;
     const days = Math.floor(elapsedTime / (1000 * 60 * 60 * 24));
-    return  `Temps écoulé : ${days} jours ${hours} heures ${minutes} minutes ${seconds} secondes`
+    return `Temps écoulé : ${days} jours ${hours} heures ${minutes} minutes ${seconds} secondes`;
   }
 
   definition(socket, msg) {
